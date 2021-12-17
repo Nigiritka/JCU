@@ -20,8 +20,9 @@
  */
 
 
-void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length, uint8_t BufferSize)
+void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 {
+	//Length = BufferSize - hdma_usart1_rx.Instance->CNDTR;
 	/*
 	 * create temporary variables for ModBus parcing
 	 */
@@ -100,7 +101,12 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length, uint8_t BufferSize)
 						TxData[ByteCount+3] = CRCforResponse;
 						CRCforResponse >>= 8;
 						TxData[ByteCount+4] = CRCforResponse;
-						HAL_UART_Transmit_DMA(&huart2, TxData, (5+ByteCount));
+						while(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_BUSY))
+						{
+
+						}
+						HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_SET);
+						HAL_UART_Transmit_DMA(&huart1, TxData, (5+ByteCount));
 					}
 
 					// if there are errors in request:
@@ -148,7 +154,12 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length, uint8_t BufferSize)
 						TxData[ByteCount+3] = CRCforResponse;
 						CRCforResponse >>= 8;
 						TxData[ByteCount+4] = CRCforResponse;
-						HAL_UART_Transmit_DMA(&huart2, TxData, (5+ByteCount));
+						while(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_BUSY))
+						{
+
+						}
+						HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_SET);
+						HAL_UART_Transmit_DMA(&huart1, TxData, (5+ByteCount));
 					}
 
 					// if there are errors in request:
@@ -178,7 +189,8 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length, uint8_t BufferSize)
 
 						// send ECHO
 						// Maybe better do not sending what we received, but send what we really have in memory as the echo
-						HAL_UART_Transmit_DMA(&huart2, RxData, Length);
+						HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_SET);
+						HAL_UART_Transmit_DMA(&huart1, RxData, Length);
 					}
 					// if there are errors in request:
 					else
@@ -227,8 +239,8 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length, uint8_t BufferSize)
 						TxData[ByteCount+2] = CRCforResponse;
 						CRCforResponse >>= 8;
 						TxData[ByteCount+3] = CRCforResponse;
-
-						HAL_UART_Transmit_DMA(&huart2, TxData, WRITE_MULTIPLE_AOHR_BYTES_RESPONSE);
+						HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_SET);
+						HAL_UART_Transmit_DMA(&huart1, TxData, WRITE_MULTIPLE_AOHR_BYTES_RESPONSE);
 					}
 
 					// if there are errors in request:
@@ -256,15 +268,19 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length, uint8_t BufferSize)
 		{
 			// do nothing
 			// wait new packet
+			HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_RESET);
+			HAL_UART_Receive_DMA(&huart1, RxData, 100);
 		}
 	}
 	else
 	{
 		// do nothing
 		// wait new packet
+		HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_RESET);
+		HAL_UART_Receive_DMA(&huart1, RxData, 100);
 	}
 
-	//HAL_UART_Receive_IT(&huart2, RxData, 256);
+
 
 }
 

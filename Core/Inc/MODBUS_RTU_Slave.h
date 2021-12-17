@@ -24,8 +24,9 @@ extern CRC_HandleTypeDef hcrc;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern UART_HandleTypeDef huart1;
-extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart1_tx;
+extern DMA_HandleTypeDef hdma_usart1_rx;
+
 /*
  * Slave's registers addresses
  *
@@ -93,7 +94,7 @@ const uint8_t SLAVE_ID = 1;										// unique slave address
 const uint8_t SLAVE_ID_BROADCAST = 0;							// SLAVE ID for Broadcast requests from MASTER
 
 
-void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length, uint8_t BufferSize);
+void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length);
 void ModbusExceptionHandler(uint8_t ExceptionCode);
 
 

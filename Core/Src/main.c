@@ -20,17 +20,18 @@
 /*
  * TO DO
  *
- * 2. optimise Modbus parcing (currently 16.1 us)
+ * 2. optimize Modbus parcing (currently 16.1 us)
  * 3. Make SPI communication more robust, as a DMA?
  * 4. decide what is the best moment to request angle from AS5048
  * 5. MAke state machine for Motor driver PWM and reading ADC and do PID
- * 6. Clear bufferes after UART, and review UART one more time, make more stable
+ * 6. Clear buffers after UART, and review UART one more time, make more stable
  * 7. Rework SPI Encoder interface, especially clearflag function
  * 8. Optimize MOdbus, measure how much time each section takes
  * 9. investigate and solve CRC problem
  * 10. Add DMA, for timer? for Uart?
- * 11. Check lines if there is no transmition before sending something
+ * 11. Check lines if there is no transmission before sending something
  * 12. Modbus coils, so that user can enable and disable single bit in status register.
+ * 13. fix deviation of waiting time after receiving message
  */
 
 
@@ -71,7 +72,10 @@ SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim1;
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
+DMA_HandleTypeDef hdma_usart1_rx;
+DMA_HandleTypeDef hdma_usart1_tx;
 DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart2_tx;
 
@@ -79,7 +83,13 @@ DMA_HandleTypeDef hdma_usart2_tx;
 uint8_t RxData[BUFFSIZE] = {0};
 uint8_t TxData[BUFFSIZE] = {0};
 uint8_t Bytecounter = 0;
-uint32_t ModbusTimeout = 32; 			// 32 - exact value for waiting 3.5 bytes of silence after end of receiving Modbus package, 14us
+char HelloWorld[] = "Hello World";
+// REVALUATE!
+/*
+ * for 2Mbit - 32 - exact value for waiting 3.5 bytes of silence after end of receiving Modbus package, 14us
+ * for 3Mbit -
+ */
+uint32_t ModbusTimeout = 2;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,8 +101,9 @@ static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_CRC_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+extern void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -128,20 +139,21 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_USART2_UART_Init();
+  MX_DMA_Init();
   MX_ADC1_Init();
   MX_TIM1_Init();
   MX_SPI1_Init();
   MX_CRC_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
   // disable interrupt of DMA - half of reveive
-  __HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
+  __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
 
-  hdma_usart2_rx.Instance->CNDTR = BUFFSIZE;
-  HAL_UART_Receive_DMA(&huart2, RxData, BUFFSIZE);
-  //JCUConfig.KiCurrentLoop = 5.6522;
+  hdma_usart1_rx.Instance->CNDTR = BUFFSIZE;
+  HAL_UART_Receive_DMA(&huart1, RxData, BUFFSIZE);
+
   EnableMotor();
   /* USER CODE END 2 */
 
@@ -152,10 +164,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  HAL_GPIO_TogglePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin);
-	  HAL_Delay(1000);
-	  if (JCUConfig.StatusRegister == 1)
-		  HAL_GPIO_WritePin(LED_WHITE_GPIO_Port, LED_WHITE_Pin, GPIO_PIN_SET);
+
+
   }
   /* USER CODE END 3 */
 }
@@ -270,13 +280,13 @@ static void MX_ADC1_Init(void)
   */
 static void MX_CRC_Init(void)
 {
-	/* USER CODE BEGIN CRC_Init 0 */
 
-	/* USER CODE END CRC_Init 0 */
+  /* USER CODE BEGIN CRC_Init 0 */
 
-	/* USER CODE BEGIN CRC_Init 1 */
+  /* USER CODE END CRC_Init 0 */
 
-	/* USER CODE END CRC_Init 1 */
+  /* USER CODE BEGIN CRC_Init 1 */
+
 	hcrc.Instance = CRC;
 	hcrc.Init.DefaultPolynomialUse = DEFAULT_POLYNOMIAL_DISABLE;
 	hcrc.Init.DefaultInitValueUse = DEFAULT_INIT_VALUE_DISABLE;
@@ -290,9 +300,12 @@ static void MX_CRC_Init(void)
 	{
 	Error_Handler();
 	}
-	/* USER CODE BEGIN CRC_Init 2 */
 
-	/* USER CODE END CRC_Init 2 */
+  /* USER CODE END CRC_Init 1 */
+
+  /* USER CODE BEGIN CRC_Init 2 */
+
+  /* USER CODE END CRC_Init 2 */
 
 }
 
@@ -411,6 +424,51 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 3000000;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_8;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /*
+   * Enable hardware "End of block" detection
+   */
+  huart1.Instance->RTOR = ModbusTimeout;
+  huart1.Instance->CR1 |= USART_CR1_RTOIE;
+  huart1.Instance->CR2 |= USART_CR2_RTOEN;
+
+
+
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -462,6 +520,12 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
   /* DMA1_Channel6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
@@ -492,7 +556,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LD3_Pin|LED_WHITE_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, RS485_FC_Pin|LED_WHITE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : LED_BLUE_Pin LED_RED_Pin */
   GPIO_InitStruct.Pin = LED_BLUE_Pin|LED_RED_Pin;
@@ -505,14 +569,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = SPI1_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(SPI1_CS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LD3_Pin LED_WHITE_Pin */
-  GPIO_InitStruct.Pin = LD3_Pin|LED_WHITE_Pin;
+  /*Configure GPIO pins : RS485_FC_Pin LED_WHITE_Pin */
+  GPIO_InitStruct.Pin = RS485_FC_Pin|LED_WHITE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
@@ -537,25 +601,41 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 void EndofBlock(void)
 {
 	// Check if it is timeout, and no new byte is coming
-	if (huart2.Instance->ISR & USART_ISR_RTOF)
+	if (huart1.Instance->ISR & USART_ISR_RTOF)
 	{
+		//HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+		uint8_t Length = BUFFSIZE - hdma_usart1_rx.Instance->CNDTR;
+		__HAL_UART_CLEAR_FLAG(&huart1, UART_CLEAR_RTOF);
+		//HAL_UART_Abort(&huart1);
 
-		//HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-		ModbusRTURoutine(RxData, (BUFFSIZE - hdma_usart2_rx.Instance->CNDTR), BUFFSIZE);
+		// Check if we received something, but not some glitch on the line
+		if (Length>0)
+		{
+			ModbusRTURoutine(RxData, Length);
+		}
+		else
+		{
+			// if it was a glitch, wait new data
+			HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_RESET);
+			HAL_UART_Receive_DMA(&huart1, RxData, BUFFSIZE);
+		}
+
 	}
 }
 
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+
+}
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-
+	HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_RESET);
 	// disable DMA for reseting DMA's counter, after enable again
-	__HAL_DMA_DISABLE(&hdma_usart2_rx);
-	hdma_usart2_rx.Instance->CNDTR = BUFFSIZE;
-	__HAL_DMA_ENABLE(&hdma_usart2_rx);
-
-
-	HAL_UART_Receive_DMA(&huart2, RxData, BUFFSIZE);
+	__HAL_DMA_DISABLE(&hdma_usart1_rx);
+	hdma_usart1_rx.Instance->CNDTR = BUFFSIZE;
+	__HAL_DMA_ENABLE(&hdma_usart1_rx);
+	HAL_UART_Receive_DMA(&huart1, RxData, BUFFSIZE);
 }
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
