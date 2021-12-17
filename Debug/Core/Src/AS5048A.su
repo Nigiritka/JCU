@@ -1,0 +1,8 @@
+AS5048A.c:31:6:CheckErrorsEnc	8	static
+AS5048A.c:53:6:ParityOk	24	static
+AS5048A.c:73:6:EncoderDataParcing	8	static
+AS5048A.c:96:6:ReadAngle_RequestErrors	8	static
+AS5048A.c:105:6:ReadErrors_RequestAngle	8	static
+AS5048A.c:115:6:ClearErrorFlags	8	static
+AS5048A.c:123:6:EnableAlarmLED	8	static
+AS5048A.c:128:6:DisableAlarmLED	8	static
