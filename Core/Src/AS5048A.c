@@ -162,7 +162,6 @@ void DisableAlarmLED(void)
  * Legacy code
  */
 /*
-/*
 
  void EncoderDataParcing(void)
 {

@@ -1,5 +1,5 @@
-Motor_Driver.c:17:6:CheckStatusRegister	8	static
-Motor_Driver.c:71:6:RunMotor	8	static
-Motor_Driver.c:86:6:UpdatePWM	8	static
-Motor_Driver.c:91:6:EnableMotor	8	static
-Motor_Driver.c:104:6:DisableMotor	8	static
+Motor_Driver.c:21:6:UpdatePWM	24	static
+Motor_Driver.c:58:6:CheckStatusRegister	8	static
+Motor_Driver.c:118:6:RunMotor	8	static
+Motor_Driver.c:134:6:EnableMotor	8	static
+Motor_Driver.c:147:6:DisableMotor	8	static

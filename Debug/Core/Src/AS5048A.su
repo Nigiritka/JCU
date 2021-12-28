@@ -1,6 +1,6 @@
 AS5048A.c:30:6:CheckErrorsEnc	8	static
 AS5048A.c:51:6:ParityOk	24	static
 AS5048A.c:73:6:EncoderRoutine	8	static
-AS5048A.c:136:6:HAL_SPI_TxRxCpltCallback	16	static
-AS5048A.c:151:6:EnableAlarmLED	8	static
-AS5048A.c:156:6:DisableAlarmLED	8	static
+AS5048A.c:134:6:HAL_SPI_TxRxCpltCallback	16	static
+AS5048A.c:149:6:EnableAlarmLED	8	static
+AS5048A.c:154:6:DisableAlarmLED	8	static

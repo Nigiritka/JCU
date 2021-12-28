@@ -158,8 +158,8 @@ int main(void)
   /*
    * Test part
    */
-
-  JCUConfig.TargetAngel = 2000;
+  JCUConfig.KpPossitionLoop = 0.2;
+  JCUConfig.TargetAngel = 8000;
   JCUConfig.StatusRegister = 0x09;
 
   CheckStatusRegister();

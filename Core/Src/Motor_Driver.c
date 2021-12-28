@@ -13,6 +13,47 @@ uint16_t *pJCUConfig = (uint16_t*) &JCUConfig;
 uint16_t *pJCUState = (uint16_t*) &JCUState;
 
 
+float tau; 												// Derivative time constant
+uint16_t PWMValue = 500;
+float PosError;
+float prevPosError;
+
+void UpdatePWM(void)
+{
+	HAL_GPIO_TogglePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin);
+
+	// 1. Measuring error position
+	PosError = JCUConfig.TargetAngel - JCUState.Angle;
+
+	// 2. Proportional
+	float Proportional = JCUConfig.KpPossitionLoop * PosError;
+
+	float Integral = 0;
+
+	float Derivative = 0;
+
+	float PID = Proportional + Integral + Derivative;
+
+	if (PID >= 0)
+	{
+		PID = 500 + PID;
+		if (PID < MAX_DUTY_CYCLE)
+			PWMValue = PID;
+		else
+			PID = MAX_DUTY_CYCLE;
+	}
+	else
+	{
+		PID = 500 + PID;
+		if (PID > MIN_DUTY_CYCLE)
+			PWMValue = PID;
+		else
+			PID = MIN_DUTY_CYCLE;
+	}
+	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 1000 - PWMValue);
+	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, PWMValue);
+
+}
 
 void CheckStatusRegister(void)
 {
@@ -24,7 +65,6 @@ void CheckStatusRegister(void)
 			MotorState = MOTOR_ENABLED;
 			EnableMotor();
 		}
-
 	}
 	else
 	{
@@ -32,7 +72,6 @@ void CheckStatusRegister(void)
 		{
 			MotorState = MOTOR_DISABLED;
 			DisableMotor();
-			//PeriodCounter = 0;
 		}
 	}
 
@@ -45,6 +84,10 @@ void CheckStatusRegister(void)
 			// TO DO: Apply brake, obviously
 		}
 	}
+	else
+	{
+		// should  i reset brake??
+	}
 
 
 	if (CHECK_BIT(JCUConfig.StatusRegister, GO_TO_TARGET_POSITION_Pos))
@@ -54,6 +97,10 @@ void CheckStatusRegister(void)
 			MotorState = MOTOR_RUN;
 		}
 
+	}
+	else
+	{
+		// decide what to do here
 	}
 
 	if (CHECK_BIT(JCUConfig.StatusRegister, STOP_MOTOR_Pos))
@@ -83,10 +130,6 @@ void RunMotor(void)
 
 }
 
-void UpdatePWM(void)
-{
-	HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_SET);
-}
 
 void EnableMotor(void)
 {

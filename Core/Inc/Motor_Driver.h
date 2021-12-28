@@ -46,6 +46,12 @@ extern ADC_HandleTypeDef hadc1;
 #define STOP_MOTOR							STOP_MOTOR_Msk
 
 
+/*
+ * DEFINES motor parameters
+ */
+
+#define MAX_DUTY_CYCLE						900
+#define MIN_DUTY_CYCLE						100
 
 /*
  * Make a structure with all this JCU parameters
