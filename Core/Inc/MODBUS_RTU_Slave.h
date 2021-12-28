@@ -61,6 +61,7 @@ extern DMA_HandleTypeDef hdma_usart1_rx;
 
 #define TOTAL_AOHR							22					// Total amount of Analog Output Holding Registers available in the Slave
 
+#define WRITE_MULTIPLE_AOHR_BYTES_RESPONSE	8					// Fixed size for response when multiple registers were written
 /*
  * Analog Input Registers
  */

@@ -169,7 +169,6 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 						ModbusExceptionHandler(MODBUS_ILLEGAL_DATA_ADDRESS);
 					}
 
-
 					break;
 
 				case WRITE_SINGLE_AOHR:
@@ -191,6 +190,11 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 						// Maybe better do not sending what we received, but send what we really have in memory as the echo
 						HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_SET);
 						HAL_UART_Transmit_DMA(&huart1, RxData, Length);
+						if (RequestedAddress == ADDRESS_STATUS_REGISTER)
+						{
+							CheckStatusRegister();
+						}
+
 					}
 					// if there are errors in request:
 					else
@@ -241,6 +245,7 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 						TxData[ByteCount+3] = CRCforResponse;
 						HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_SET);
 						HAL_UART_Transmit_DMA(&huart1, TxData, WRITE_MULTIPLE_AOHR_BYTES_RESPONSE);
+						CheckStatusRegister();												// could be improved if we can check, was this register updated by master or not
 					}
 
 					// if there are errors in request:

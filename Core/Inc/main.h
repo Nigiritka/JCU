@@ -80,7 +80,7 @@ void EndofBlock(void);
 #define LED_WHITE_Pin GPIO_PIN_4
 #define LED_WHITE_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-
+#define CHECK_BIT(var,pos)					(((var) & (1<<(pos)))>>pos)
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

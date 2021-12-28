@@ -12,71 +12,80 @@
 uint16_t *pJCUConfig = (uint16_t*) &JCUConfig;
 uint16_t *pJCUState = (uint16_t*) &JCUState;
 
-uint8_t PeriodCounter=0;
 
 
+void CheckStatusRegister(void)
+{
+	// Check bits in status register ONLY which could be written by Master.
+	if 	(CHECK_BIT(JCUConfig.StatusRegister, ENABLE_MOTOR_Pos))
+	{
+		if (MotorState == MOTOR_DISABLED)			// enable motor if it is not enabled
+		{
+			MotorState = MOTOR_ENABLED;
+			EnableMotor();
+		}
+
+	}
+	else
+	{
+		if (MotorState != MOTOR_DISABLED)
+		{
+			MotorState = MOTOR_DISABLED;
+			DisableMotor();
+			//PeriodCounter = 0;
+		}
+	}
+
+
+	if (CHECK_BIT(JCUConfig.StatusRegister, SET_BRAKE_Pos))
+	{
+		// apply brake only if motor is not running
+		if(MotorState != MOTOR_RUN)
+		{
+			// TO DO: Apply brake, obviously
+		}
+	}
+
+
+	if (CHECK_BIT(JCUConfig.StatusRegister, GO_TO_TARGET_POSITION_Pos))
+	{
+		if (MotorState == MOTOR_ENABLED)
+		{
+			MotorState = MOTOR_RUN;
+		}
+
+	}
+
+	if (CHECK_BIT(JCUConfig.StatusRegister, STOP_MOTOR_Pos))
+	{
+		JCUConfig.StatusRegister &=~ GO_TO_TARGET_POSITION;				// not go to target position anymore
+		// 1. Terminate PID
+		MotorState = MOTOR_ENABLED;
+		// 2. set PWM 50%
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 500);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 500);
+	}
+
+}
 
 void RunMotor(void)
 {
 
-	//EnableAlarmLED();
+	EncoderRoutine();
 
-	if (PeriodCounter == 0)
+	HAL_ADC_Start_IT(&hadc1);
+
+
+	if (MotorState == MOTOR_RUN)
 	{
-		ReadAngle_RequestErrors();
-		PeriodCounter++;
-	}
-	else
-	{
-		ReadErrors_RequestAngle();
-		HAL_ADC_Start_IT(&hadc1);
-		PeriodCounter=0;
+		UpdatePWM();
 	}
 
-/*
-	uint16_t DutyCycle = __HAL_TIM_GET_COMPARE(&htim1, TIM_CHANNEL_1);
+}
 
-	switch (PeriodCounter)
-	{
-	case 0:
-		if (DutyCycle >= 500)
-		{
-			//EnableAlarmLED();
-			HAL_ADC_Start_IT(&hadc1);
-			ReadAngle_RequestErrors();
-		}
-		break;
-	case 1:
-		if (DutyCycle < 500)
-		{
-			//EnableAlarmLED();
-			HAL_ADC_Start_IT(&hadc1);
-			ReadAngle_RequestErrors();
-		}
-		break;
-	case 2:
-		if (DutyCycle >= 500)
-		{
-			__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, JCUState.Torque/4);
-			ReadErrors_RequestAngle();
-		}
-		break;
-	case 3:
-		if (DutyCycle < 500)
-		{
-			__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, JCUState.Torque/4);
-			ReadErrors_RequestAngle();
-		}
-		break;
-	}
-
-
-	if (PeriodCounter < 3)
-		PeriodCounter++;
-	else
-		PeriodCounter = 0;
-*/
-
+void UpdatePWM(void)
+{
+	HAL_GPIO_WritePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin, GPIO_PIN_SET);
 }
 
 void EnableMotor(void)
@@ -87,11 +96,9 @@ void EnableMotor(void)
 	HAL_TIMEx_PWMN_Start_IT(&htim1, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start_IT(&htim1, TIM_CHANNEL_2);
 	HAL_TIMEx_PWMN_Start_IT(&htim1, TIM_CHANNEL_2);
-	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 400);
-	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 600);
-	//JCUConfig.StatusRegister |= ENABLE_MOTOR;
-
-	//ClearErrorFlags();
+	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 500);
+	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 500);
+	MotorState = MOTOR_ENABLED;
 }
 
 void DisableMotor(void)
@@ -101,7 +108,7 @@ void DisableMotor(void)
 	HAL_TIMEx_PWMN_Stop_IT(&htim1, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Stop_IT(&htim1, TIM_CHANNEL_2);
 	HAL_TIMEx_PWMN_Stop_IT(&htim1, TIM_CHANNEL_2);
-	JCUConfig.StatusRegister &=~ ENABLE_MOTOR;
+	MotorState = MOTOR_DISABLED;
 }
 
 /*

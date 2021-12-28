@@ -19,14 +19,14 @@
 
 /*
  * TO DO
- *
+ * 1. allocate memory for JCU with attribute
  * 2. optimize Modbus parcing (currently 16.1 us)
  * 3. Make SPI communication more robust, as a DMA?
  * 4. decide what is the best moment to request angle from AS5048
  * 5. MAke state machine for Motor driver PWM and reading ADC and do PID
  * 6. Clear buffers after UART, and review UART one more time, make more stable
- * 7. Rework SPI Encoder interface, especially clearflag function
- * 8. Optimize MOdbus, measure how much time each section takes
+ * 7. Rework SPI Encoder interface, especially clearflag function. Reconsider reading of the encoder complitely
+ * 8. Do State machine for motor (if motor enabled or not and what is going on)
  * 9. investigate and solve CRC problem
  * 10. Add DMA, for timer? for Uart?
  * 11. Check lines if there is no transmission before sending something
@@ -154,7 +154,17 @@ int main(void)
   hdma_usart1_rx.Instance->CNDTR = BUFFSIZE;
   HAL_UART_Receive_DMA(&huart1, RxData, BUFFSIZE);
 
-  EnableMotor();
+
+  /*
+   * Test part
+   */
+
+  JCUConfig.TargetAngel = 2000;
+  JCUConfig.StatusRegister = 0x09;
+
+  CheckStatusRegister();
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -638,12 +648,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 	HAL_UART_Receive_DMA(&huart1, RxData, BUFFSIZE);
 }
 
-void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
-{
-	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
-	EncoderDataParcing();
-	//EnableAlarmLED();
-}
+
 
 
 /* USER CODE END 4 */

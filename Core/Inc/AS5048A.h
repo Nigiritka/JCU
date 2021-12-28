@@ -12,6 +12,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+extern SPI_HandleTypeDef hspi1;
+
 #define SIZE 								2										// number of bytes of the message of SPI communication with AD5048A
 #define STATE_ENCODER_READ_ANGLE			1
 #define STATE_ENCODER_READ_ERRORS			2
@@ -29,17 +31,18 @@
 #define ERROR_ENCODER_PARITY_Msk			(0x1UL << ERROR_ENCODER_PARITY_Pos)		/*!< 0x00000002 */
 #define ERROR_ENCODER_PARITY				ERROR_ENCODER_PARITY_Msk
 
+typedef enum {
+	ENCODER_CLEAR_ERRORS = 0U,
+	ENCODER_LOCK_ERRORS = 1U,
+	ENCODER_WAIT_ANGLE = 2U,
+	ENCODER_LOCK_ANGLE = 3U,
+	ENCODER_BUSY_ANGLE = 4U,
+	ENCODER_WAIT_DIAGNOSTIC = 5U,
+	ENCODER_LOCK_DIAGNOSTIC = 6U,
+	ENCODER_BUSY_DIAGNOSTIC = 7U,
+} eEncoderStateMachine;
 
-/*
- * DEFINES STATUS Register
- */
-
-#define ENABLE_MOTOR_Pos					(0U)									// Enable timer which control PWM for the motor
-#define ENABLE_MOTOR_Msk					(0x1UL << ENABLE_MOTOR_Pos)				/*!< 0x00000001 */
-#define ENABLE_MOTOR						ENABLE_MOTOR_Msk
-
-
-extern SPI_HandleTypeDef hspi1;
+eEncoderStateMachine EncoderState;
 
 /*
  * Functions prototypes
@@ -56,6 +59,7 @@ void ReadErrors();
 void ReadAngle_RequestErrors(void);
 void ReadErrors_RequestAngle(void);
 void EncoderDataParcing(void);
+void EncoderRoutine(void);
 
 #endif /* INC_AS5048A_H_ */
 

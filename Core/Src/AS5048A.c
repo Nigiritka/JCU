@@ -19,8 +19,7 @@ uint8_t AGCDiagnosticValue [SIZE] = {0};						// Variable for AGC value
 uint8_t ProgRegWrite [SIZE] = {0x00, 0x03};						// Command for getting writing access to programming control register
 uint8_t ProgRegValue [SIZE] = {0x80, 0x01};						// Enable AS5048 programming
 uint16_t AngularPosition = 0;									// 16-bit angle for the JCU
-uint8_t EncoderState = 0;
-
+uint16_t temp;													// temporary variable for checking parity from encoder
 
 volatile bool comp_high = 0;									// if 1 - weak magnetic field
 volatile bool comp_low = 0;										// if 1 - high magnetic field
@@ -40,7 +39,6 @@ void CheckErrorsEnc()
 	{
 		EnableAlarmLED();
 		JCUState.Errors |= ERROR_ENCODER_MAGNET;
-		//ClearErrorFlags();
 	}
 	else
 	{
@@ -70,54 +68,82 @@ bool ParityOk(uint16_t scancode)
 }
 //-------------------------------------------------------
 
-void EncoderDataParcing(void)
+
+
+void EncoderRoutine(void)
 {
 	switch(EncoderState)
 	{
-		case STATE_ENCODER_READ_ANGLE:
-			JCUState.Angle = (Angle[0] << 8) + Angle[1];
-			if (ParityOk(JCUState.Angle))
+		case (ENCODER_CLEAR_ERRORS):
+			HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
+			HAL_SPI_TransmitReceive_IT(&hspi1, ReadErrorFlagsAddress, Angle, SIZE);
+			EncoderState = ENCODER_LOCK_ERRORS;
+		break;
+
+		case (ENCODER_LOCK_ERRORS):
+			// if it is locked, wait until it becomes available for new data transfer in interrupt
+		break;
+
+		case (ENCODER_WAIT_ANGLE):
+			HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
+			HAL_SPI_TransmitReceive_IT(&hspi1, AGCDiagnosticAddress, Angle, SIZE);			// read  read angle, and sent request to read errors, so that next communication we would have error information
+			EncoderState = ENCODER_LOCK_ANGLE;
+		break;
+
+		case (ENCODER_LOCK_ANGLE):
+			// if it is locked, wait until it becomes available for new data transfer in interrupt
+		break;
+
+		case (ENCODER_BUSY_ANGLE):
+			temp = (Angle[0] << 8) + Angle[1];
+			if (ParityOk(temp))										// check parity, if angular data was corrupted
+			{
 				JCUState.Errors &=~ ERROR_ENCODER_PARITY;
+				temp &= 0x3FFF;										// remove status bits from angle information
+				JCUState.Angle = temp;								// update angle with latest value
+				EncoderState = ENCODER_WAIT_DIAGNOSTIC;
+				break;
+			}
 			else
+			{
+				//JCUState.Angle = 0;
+				DisableMotor();
 				JCUState.Errors |= ERROR_ENCODER_PARITY;
-			JCUState.Angle &= 0x3FFF;
-			break;
+				EncoderState = ENCODER_CLEAR_ERRORS;
+				break;
+			}
 
-		case STATE_ENCODER_READ_ERRORS:
+		case (ENCODER_WAIT_DIAGNOSTIC):
+			HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
+			HAL_SPI_TransmitReceive_IT(&hspi1, ReadAngle, AGCDiagnosticValue, SIZE);		// read data about error, and sent request to read angle, so that next communication we would have actual angle information
+			EncoderState = ENCODER_LOCK_DIAGNOSTIC;
+		break;
+
+		case (ENCODER_LOCK_DIAGNOSTIC):
+			// if it is locked, wait until it becomes available for new data transfer in interrupt
+		break;
+
+		case (ENCODER_BUSY_DIAGNOSTIC):
 			CheckErrorsEnc();
-			break;
-		case STATE_ENCODER_CLEAR_ERRORS:
-
-			break;
+			EncoderState = ENCODER_WAIT_ANGLE;
+		break;
 	}
 }
 
 
-void ReadAngle_RequestErrors(void)
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-	EncoderState = STATE_ENCODER_READ_ANGLE;
-	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
-	HAL_SPI_TransmitReceive_IT(&hspi1, AGCDiagnosticAddress, Angle, SIZE);
-	//HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
-													// remove 2 MSB bits from angle, because they represent Parity and Error
-}
+	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);				// put CS high again after end of data transfer
+	if (EncoderState == ENCODER_LOCK_ERRORS)
+		EncoderState = ENCODER_WAIT_ANGLE;
+	else if (EncoderState == ENCODER_LOCK_ANGLE)
+		EncoderState = ENCODER_BUSY_ANGLE;
+	else if (EncoderState == ENCODER_LOCK_DIAGNOSTIC)
+		EncoderState = ENCODER_BUSY_DIAGNOSTIC;
+	else
+		EncoderState = ENCODER_CLEAR_ERRORS;
 
-void ReadErrors_RequestAngle(void)
-{
-	EncoderState = STATE_ENCODER_READ_ERRORS;
-	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
-	HAL_SPI_TransmitReceive_IT(&hspi1, ReadAngle, AGCDiagnosticValue, SIZE);		// read data about error, and sent request to read angle, so that next communication we would have actual angle information
-	//HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
-
-
-}
-
-void ClearErrorFlags(void)
-{
-	EncoderState = STATE_ENCODER_CLEAR_ERRORS;
-	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
-	HAL_SPI_TransmitReceive_IT(&hspi1, ReadErrorFlagsAddress, ReadAngle, SIZE);
-
+	EncoderRoutine();																// process data which we have just read
 }
 
 void EnableAlarmLED(void)
@@ -136,6 +162,63 @@ void DisableAlarmLED(void)
  * Legacy code
  */
 /*
+/*
+
+ void EncoderDataParcing(void)
+{
+	switch(EncoderState)
+	{
+		case STATE_ENCODER_READ_ANGLE:
+			temp = (Angle[0] << 8) + Angle[1];
+			if (ParityOk(temp))										// check parity, if angular data was corrupted
+			{
+				JCUState.Errors &=~ ERROR_ENCODER_PARITY;
+				temp &= 0x3FFF;										// remove status bits from angle information
+				JCUState.Angle = temp;								// update angle with latest value
+				break;
+			}
+			else
+			{
+				//JCUState.Angle = 0;
+				DisableMotor();
+				JCUState.Errors |= ERROR_ENCODER_PARITY;
+				break;
+			}
+
+		case STATE_ENCODER_READ_ERRORS:
+			CheckErrorsEnc();
+			break;
+
+		case STATE_ENCODER_CLEAR_ERRORS:
+
+			break;
+	}
+}
+
+void ReadAngle_RequestErrors(void)
+{
+	EncoderState = STATE_ENCODER_READ_ANGLE;
+	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
+	HAL_SPI_TransmitReceive_IT(&hspi1, AGCDiagnosticAddress, Angle, SIZE);			// read  read angle, and sent request to read errors, so that next communication we would have error information
+
+}
+
+void ReadErrors_RequestAngle(void)
+{
+	EncoderState = STATE_ENCODER_READ_ERRORS;
+	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
+	HAL_SPI_TransmitReceive_IT(&hspi1, ReadAngle, AGCDiagnosticValue, SIZE);		// read data about error, and sent request to read angle, so that next communication we would have actual angle information
+}
+
+void ClearErrorFlags(void)
+{
+	EncoderState = STATE_ENCODER_CLEAR_ERRORS;
+	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
+	HAL_SPI_TransmitReceive_IT(&hspi1, ReadErrorFlagsAddress, ReadAngle, SIZE);
+}
+
+
+
 
 void ReadAngle_RequestErrors(void)
 {
