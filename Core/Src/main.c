@@ -32,6 +32,10 @@
  * 11. Check lines if there is no transmission before sending something
  * 12. Modbus coils, so that user can enable and disable single bit in status register.
  * 13. fix deviation of waiting time after receiving message
+ * 14. enable motor and start motor from GUI
+ * 15. Remove numbers assignment in ENUM of AS5048
+ * 16. Implement Modbus coils for Status Register
+ * 17. Double check bits maps. have been changed in Modbus register description
  */
 
 
@@ -160,8 +164,7 @@ int main(void)
    */
   JCUConfig.KpPossitionLoop = 0.2;
   JCUConfig.TargetAngel = 8000;
-  JCUConfig.StatusRegister = 0x09;
-
+  JCUConfig.StatusRegister = 0x01;
   CheckStatusRegister();
 
 

@@ -99,7 +99,7 @@ JCU_State_t JCUState;
 
 typedef enum
 {
-	MOTOR_DISABLED = 0U,
+	MOTOR_DISABLED = 0U,			// remove these 0 1 2
 	MOTOR_ENABLED = 1U,				// 50% duty cycle, does not move
 	MOTOR_RUN = 2U,
 
@@ -113,6 +113,7 @@ void RunMotor(void);
 void EnableMotor(void);
 void DisableMotor(void);
 void UpdatePWM(void);
+int16_t SpeedCalculation(void);
 
 #endif /* INC_MOTOR_DRIVER_H_ */
 

@@ -15,6 +15,11 @@ uint16_t *pJCUState = (uint16_t*) &JCUState;
 
 float tau; 												// Derivative time constant
 uint16_t PWMValue = 500;
+uint16_t AngleArray[10] = {0};
+uint16_t PreviousAngle = 0;
+int16_t AverageSpeed = 0;
+uint32_t AveragePosititon = 0;
+uint16_t counter = 0;
 float PosError;
 float prevPosError;
 
@@ -122,6 +127,7 @@ void RunMotor(void)
 
 	HAL_ADC_Start_IT(&hadc1);
 
+	JCUState.Speed = SpeedCalculation();
 
 	if (MotorState == MOTOR_RUN)
 	{
@@ -130,6 +136,30 @@ void RunMotor(void)
 
 }
 
+/*
+ * REDO~!!!!!!!!!!!!!!!!!!!!111
+ * Use quadrature encoder for this
+ */
+int16_t SpeedCalculation(void)
+{
+	if (counter < 9)
+	{
+		counter++;
+		AveragePosititon = (JCUState.Angle/4) + AveragePosititon;
+	}
+	else
+	{
+		counter = 0;
+		AveragePosititon = AveragePosititon + JCUState.Angle;
+		AveragePosititon = AveragePosititon/10;
+		AverageSpeed = (AveragePosititon - PreviousAngle);
+		PreviousAngle = AveragePosititon;
+		AveragePosititon = 0;
+	}
+
+
+	return AverageSpeed;
+}
 
 void EnableMotor(void)
 {
