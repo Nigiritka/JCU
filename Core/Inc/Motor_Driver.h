@@ -37,11 +37,11 @@ extern ADC_HandleTypeDef hadc1;
 #define GO_TO_TARGET_POSITION_Msk			(0x1UL << GO_TO_TARGET_POSITION_Pos)	/*!< 0x00001000 */
 #define GO_TO_TARGET_POSITION				GO_TO_TARGET_POSITION_Msk
 
-#define REACHED_TARGET_POSITION_Pos			(4)										// FLAG if motor reached target position
+#define REACHED_TARGET_POSITION_Pos			(4U)									// FLAG if motor reached target position
 #define REACHED_TARGET_POSITION_Msk			(0x1UL << REACHED_TARGET_POSITION_Pos)	/*!< 0x00010000 */
 #define REACHED_TARGET_POSITION				REACHED_TARGET_POSITION_Msk
 
-#define STOP_MOTOR_Pos						(5)										// Stop motor in current position, PWM still will be apply 50%
+#define STOP_MOTOR_Pos						(5U)									// Stop motor in current position, PWM still will be apply 50%
 #define STOP_MOTOR_Msk						(0x1UL << STOP_MOTOR_Pos)				/*!< 0x00010000 */
 #define STOP_MOTOR							STOP_MOTOR_Msk
 
@@ -99,13 +99,22 @@ JCU_State_t JCUState;
 
 typedef enum
 {
-	MOTOR_DISABLED = 0U,			// remove these 0 1 2
-	MOTOR_ENABLED = 1U,				// 50% duty cycle, does not move
-	MOTOR_RUN = 2U,
+	MOTOR_DISABLED,
+	MOTOR_ENABLED,				// 50% duty cycle, does not move
+	MOTOR_RUN,
 
 } eMotorStateMachine;
 
 eMotorStateMachine MotorState;
+
+typedef enum
+{
+	READ_ENCODER,
+	READ_ANALOG,
+
+} eFeedbackStateMachine;
+
+eFeedbackStateMachine FeedbackState;
 
 void CheckStatusRegister(void);
 void TestAsignment(void);

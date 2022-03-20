@@ -14,8 +14,8 @@ uint16_t *pJCUState = (uint16_t*) &JCUState;
 
 
 float tau; 												// Derivative time constant
+volatile uint16_t adcResultDMA[3];
 uint16_t PWMValue = 500;
-uint16_t AngleArray[10] = {0};
 uint16_t PreviousAngle = 0;
 int16_t AverageSpeed = 0;
 uint32_t AveragePosititon = 0;
@@ -122,10 +122,17 @@ void CheckStatusRegister(void)
 
 void RunMotor(void)
 {
+	if (FeedbackState == READ_ENCODER)
+	{
+		EncoderRoutine();
+		FeedbackState = READ_ANALOG;
+	}
+	else if (FeedbackState == READ_ANALOG)
+	{
+		HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adcResultDMA, 3);
+		FeedbackState = READ_ENCODER;
+	}
 
-	EncoderRoutine();
-
-	HAL_ADC_Start_IT(&hadc1);
 
 	JCUState.Speed = SpeedCalculation();
 
@@ -136,19 +143,22 @@ void RunMotor(void)
 
 }
 
+
 /*
  * REDO~!!!!!!!!!!!!!!!!!!!!111
  * Use quadrature encoder for this
  */
 int16_t SpeedCalculation(void)
 {
-	if (counter < 9)
+	if (counter < 2)
 	{
 		counter++;
 		AveragePosititon = (JCUState.Angle/4) + AveragePosititon;
 	}
 	else
 	{
+		HAL_GPIO_WritePin(LED_WHITE_GPIO_Port, LED_WHITE_Pin, GPIO_PIN_SET);
+
 		counter = 0;
 		AveragePosititon = AveragePosititon + JCUState.Angle;
 		AveragePosititon = AveragePosititon/10;

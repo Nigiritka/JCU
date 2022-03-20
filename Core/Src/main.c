@@ -36,6 +36,7 @@
  * 15. Remove numbers assignment in ENUM of AS5048
  * 16. Implement Modbus coils for Status Register
  * 17. Double check bits maps. have been changed in Modbus register description
+ * 18. Implement current loop
  */
 
 
@@ -69,6 +70,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_HandleTypeDef hdma_adc1;
 
 CRC_HandleTypeDef hcrc;
 
@@ -94,6 +96,8 @@ char HelloWorld[] = "Hello World";
  * for 3Mbit -
  */
 uint32_t ModbusTimeout = 2;
+
+extern volatile uint16_t adcResultDMA[3];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -154,7 +158,7 @@ int main(void)
 
   // disable interrupt of DMA - half of reveive
   __HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
-
+  __HAL_DMA_DISABLE_IT(&hdma_adc1, DMA_IT_HT);
   hdma_usart1_rx.Instance->CNDTR = BUFFSIZE;
   HAL_UART_Receive_DMA(&huart1, RxData, BUFFSIZE);
 
@@ -162,9 +166,9 @@ int main(void)
   /*
    * Test part
    */
-  JCUConfig.KpPossitionLoop = 0.2;
-  JCUConfig.TargetAngel = 8000;
-  JCUConfig.StatusRegister = 0x01;
+  JCUConfig.KpPossitionLoop = 0.3;
+  JCUConfig.TargetAngel = 11000;
+  JCUConfig.StatusRegister = 0x09;
   CheckStatusRegister();
 
 
@@ -253,11 +257,11 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.NbrOfConversion = 3;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -276,6 +280,23 @@ static void MX_ADC1_Init(void)
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_16;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_8;
+  sConfig.Rank = ADC_REGULAR_RANK_3;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -314,10 +335,21 @@ static void MX_CRC_Init(void)
 	Error_Handler();
 	}
 
+	// do not compile CRC settings from Cube MX
+	#if defined(CUBEMXCRC)
   /* USER CODE END CRC_Init 1 */
-
+  hcrc.Instance = CRC;
+  hcrc.Init.DefaultPolynomialUse = DEFAULT_POLYNOMIAL_ENABLE;
+  hcrc.Init.DefaultInitValueUse = DEFAULT_INIT_VALUE_ENABLE;
+  hcrc.Init.InputDataInversionMode = CRC_INPUTDATA_INVERSION_NONE;
+  hcrc.Init.OutputDataInversionMode = CRC_OUTPUTDATA_INVERSION_DISABLE;
+  hcrc.InputDataFormat = CRC_INPUTDATA_FORMAT_BYTES;
+  if (HAL_CRC_Init(&hcrc) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN CRC_Init 2 */
-
+	#endif
   /* USER CODE END CRC_Init 2 */
 
 }
@@ -533,6 +565,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
   /* DMA1_Channel4_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
@@ -605,8 +640,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
+	HAL_GPIO_WritePin(LED_WHITE_GPIO_Port, LED_WHITE_Pin, GPIO_PIN_RESET);
+	JCUState.MotorTemp = adcResultDMA[0] >> 8;
+	JCUState.HbridgeTemp = adcResultDMA[1] >> 8;
+	JCUState.Torque = adcResultDMA[2];
 	//HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-	JCUState.Torque = HAL_ADC_GetValue(hadc);
+	// JCUState.Torque = HAL_ADC_GetValue(hadc);
 	//__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, JCUState.Torque/4);
 	//__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 4096-JCUState.Torque/4);
 }
