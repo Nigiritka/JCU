@@ -21,22 +21,15 @@
  * TO DO
  * 1. allocate memory for JCU with attribute
  * 2. optimize Modbus parcing (currently 16.1 us)
- * 3. Make SPI communication more robust, as a DMA?
- * 4. decide what is the best moment to request angle from AS5048
- * 5. MAke state machine for Motor driver PWM and reading ADC and do PID
- * 6. Clear buffers after UART, and review UART one more time, make more stable
- * 7. Rework SPI Encoder interface, especially clearflag function. Reconsider reading of the encoder complitely
- * 8. Do State machine for motor (if motor enabled or not and what is going on)
- * 9. investigate and solve CRC problem
- * 10. Add DMA, for timer? for Uart?
- * 11. Check lines if there is no transmission before sending something
- * 12. Modbus coils, so that user can enable and disable single bit in status register.
- * 13. fix deviation of waiting time after receiving message
- * 14. enable motor and start motor from GUI
- * 15. Remove numbers assignment in ENUM of AS5048
- * 16. Implement Modbus coils for Status Register
- * 17. Double check bits maps. have been changed in Modbus register description
- * 18. Implement current loop
+ * 3. Clear buffers after UART, and review UART one more time, make more stable
+ * 4. investigate and solve CRC problem
+ * 5. Add DMA, for timer? for Uart?
+ * 6. Check lines if there is no transmission before sending something
+ * 7. Modbus coils, so that user can enable and disable single bit in status register.
+ * 8. fix deviation of waiting time after receiving message
+ * 9. Double check bits maps. have been changed in Modbus register description
+ * 10. Implement current loop
+ * 11. Check modbusline before sending something!
  */
 
 
@@ -276,7 +269,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_11;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_12CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_92CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -286,16 +279,15 @@ static void MX_ADC1_Init(void)
   }
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_16;
+  sConfig.Channel = ADC_CHANNEL_8;
   sConfig.Rank = ADC_REGULAR_RANK_2;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
   }
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_8;
+  sConfig.Channel = ADC_CHANNEL_16;
   sConfig.Rank = ADC_REGULAR_RANK_3;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
@@ -633,22 +625,6 @@ static void MX_GPIO_Init(void)
 
 
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	RunMotor();
-}
-
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
-{
-	HAL_GPIO_WritePin(LED_WHITE_GPIO_Port, LED_WHITE_Pin, GPIO_PIN_RESET);
-	JCUState.MotorTemp = adcResultDMA[0] >> 8;
-	JCUState.HbridgeTemp = adcResultDMA[1] >> 8;
-	JCUState.Torque = adcResultDMA[2];
-	//HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
-	// JCUState.Torque = HAL_ADC_GetValue(hadc);
-	//__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, JCUState.Torque/4);
-	//__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 4096-JCUState.Torque/4);
-}
 
 void EndofBlock(void)
 {
@@ -663,6 +639,7 @@ void EndofBlock(void)
 		// Check if we received something, but not some glitch on the line
 		if (Length>0)
 		{
+			HAL_GPIO_WritePin(LED_WHITE_GPIO_Port, LED_WHITE_Pin, GPIO_PIN_SET);
 			ModbusRTURoutine(RxData, Length);
 		}
 		else
@@ -682,6 +659,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
+	HAL_GPIO_WritePin(LED_WHITE_GPIO_Port, LED_WHITE_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_RESET);
 	// disable DMA for reseting DMA's counter, after enable again
 	__HAL_DMA_DISABLE(&hdma_usart1_rx);

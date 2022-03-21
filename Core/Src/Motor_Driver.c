@@ -122,19 +122,33 @@ void CheckStatusRegister(void)
 
 void RunMotor(void)
 {
+	/*
+	 * We calling this function with 40 kHz
+	 * due to dummy cycles, we read encoder data and analog data with 10 kHz each
+	 */
 	if (FeedbackState == READ_ENCODER)
 	{
 		EncoderRoutine();
+		FeedbackState = WAIT_ENCODER;
+	}
+	else if(FeedbackState == WAIT_ENCODER)
+	{
+		//dummy step
 		FeedbackState = READ_ANALOG;
 	}
 	else if (FeedbackState == READ_ANALOG)
 	{
 		HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adcResultDMA, 3);
+		FeedbackState = WAIT_ANALOG;
+	}
+	else if(FeedbackState == WAIT_ANALOG)
+	{
+		//dummy step
 		FeedbackState = READ_ENCODER;
 	}
 
 
-	JCUState.Speed = SpeedCalculation();
+	//JCUState.Speed = SpeedCalculation();
 
 	if (MotorState == MOTOR_RUN)
 	{
@@ -143,6 +157,18 @@ void RunMotor(void)
 
 }
 
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	RunMotor();
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+	JCUState.MotorTemp = adcResultDMA[0] >> 8;			// potentiometer
+	JCUState.HbridgeTemp = adcResultDMA[1] >> 8;		// Driver temp
+	JCUState.Torque = adcResultDMA[2];					// current feedback
+}
 
 /*
  * REDO~!!!!!!!!!!!!!!!!!!!!111
@@ -157,7 +183,7 @@ int16_t SpeedCalculation(void)
 	}
 	else
 	{
-		HAL_GPIO_WritePin(LED_WHITE_GPIO_Port, LED_WHITE_Pin, GPIO_PIN_SET);
+
 
 		counter = 0;
 		AveragePosititon = AveragePosititon + JCUState.Angle;

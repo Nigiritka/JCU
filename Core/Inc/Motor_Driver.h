@@ -110,7 +110,9 @@ eMotorStateMachine MotorState;
 typedef enum
 {
 	READ_ENCODER,
+	WAIT_ENCODER,
 	READ_ANALOG,
+	WAIT_ANALOG,
 
 } eFeedbackStateMachine;
 

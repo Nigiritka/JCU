@@ -1,6 +1,8 @@
 Motor_Driver.c:26:6:UpdatePWM	24	static
 Motor_Driver.c:63:6:CheckStatusRegister	8	static
 Motor_Driver.c:123:6:RunMotor	8	static
-Motor_Driver.c:151:9:SpeedCalculation	8	static
-Motor_Driver.c:174:6:EnableMotor	8	static
-Motor_Driver.c:187:6:DisableMotor	8	static
+Motor_Driver.c:161:6:HAL_TIM_PeriodElapsedCallback	16	static
+Motor_Driver.c:166:6:HAL_ADC_ConvCpltCallback	16	static
+Motor_Driver.c:177:9:SpeedCalculation	4	static
+Motor_Driver.c:200:6:EnableMotor	8	static
+Motor_Driver.c:213:6:DisableMotor	8	static

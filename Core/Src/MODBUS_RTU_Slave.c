@@ -103,7 +103,7 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 						TxData[ByteCount+4] = CRCforResponse;
 						while(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_BUSY))
 						{
-
+							// wait until the line is available
 						}
 						HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_SET);
 						HAL_UART_Transmit_DMA(&huart1, TxData, (5+ByteCount));
@@ -189,6 +189,10 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 						// send ECHO
 						// Maybe better do not sending what we received, but send what we really have in memory as the echo
 						HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_SET);
+						while(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_BUSY))
+						{
+							// wait until the line is available
+						}
 						HAL_UART_Transmit_DMA(&huart1, RxData, Length);
 						if (RequestedAddress == ADDRESS_STATUS_REGISTER)
 						{
@@ -244,6 +248,10 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 						CRCforResponse >>= 8;
 						TxData[ByteCount+3] = CRCforResponse;
 						HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_SET);
+						while(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_BUSY))
+						{
+							// wait until the line is available
+						}
 						HAL_UART_Transmit_DMA(&huart1, TxData, WRITE_MULTIPLE_AOHR_BYTES_RESPONSE);
 						CheckStatusRegister();												// could be improved if we can check, was this register updated by master or not
 					}
