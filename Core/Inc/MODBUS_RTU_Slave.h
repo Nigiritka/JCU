@@ -59,9 +59,16 @@ extern DMA_HandleTypeDef hdma_usart1_rx;
 #define ADDRESS_KD_COEF_SPEED_PID_HI		0x9C55				// Address of derivative coefficient of PID speed loop, high register
 #define ADDRESS_KD_COEF_SPEED_PID_LO		0x9C56				// Address of derivative coefficient of PID speed loop, low register
 
+
 #define TOTAL_AOHR							22					// Total amount of Analog Output Holding Registers available in the Slave
 
+#define TOTAL_COILS							16					// Total amount of Coils (bits in Status Register)
+
 #define WRITE_MULTIPLE_AOHR_BYTES_RESPONSE	8					// Fixed size for response when multiple registers were written
+
+
+
+
 /*
  * Analog Input Registers
  */
@@ -77,9 +84,10 @@ extern DMA_HandleTypeDef hdma_usart1_rx;
 /*
  * Modbus function codes
  */
-
+#define READ_COILS							0x01				// Read coils status
 #define READ_AOHR							0x03				// Read Analog Output Holding Registers
 #define READ_AIR							0x04				// Read Analog Input Registers
+#define WRITE_SINGLE_COIL					0x05				// Write single coil
 #define WRITE_SINGLE_AOHR					0x06				// Write single Analog Output Holding Registers
 #define WRITE_MULTIPLE_AOHR					0x10				// Write multiple Analog Output Holding Registers
 

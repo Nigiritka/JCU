@@ -25,11 +25,9 @@
  * 4. investigate and solve CRC problem
  * 5. Add DMA, for timer? for Uart?
  * 6. Check lines if there is no transmission before sending something
- * 7. Modbus coils, so that user can enable and disable single bit in status register.
- * 8. fix deviation of waiting time after receiving message
+ * 7. Modbus coils, so that user can enable and disable single bit in status register. Check it carefully
  * 9. Double check bits maps. have been changed in Modbus register description
  * 10. Implement current loop
- * 11. Check modbusline before sending something!
  */
 
 
@@ -52,7 +50,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define BUFFSIZE	100
+#define BUFFSIZE					100
+
+
+
+//for 3 Mbit - 20 - value for waiting 3.5 bytes of silence after end of receiving Modbus package
+
+#define MODBUS_TIMEOUT				20
 
 /* USER CODE END PD */
 
@@ -83,12 +87,8 @@ uint8_t RxData[BUFFSIZE] = {0};
 uint8_t TxData[BUFFSIZE] = {0};
 uint8_t Bytecounter = 0;
 char HelloWorld[] = "Hello World";
-// REVALUATE!
-/*
- * for 2Mbit - 32 - exact value for waiting 3.5 bytes of silence after end of receiving Modbus package, 14us
- * for 3Mbit -
- */
-uint32_t ModbusTimeout = 2;
+
+
 
 extern volatile uint16_t adcResultDMA[3];
 /* USER CODE END PV */
@@ -494,7 +494,7 @@ static void MX_USART1_UART_Init(void)
   /*
    * Enable hardware "End of block" detection
    */
-  huart1.Instance->RTOR = ModbusTimeout;
+  huart1.Instance->RTOR = MODBUS_TIMEOUT;
   huart1.Instance->CR1 |= USART_CR1_RTOIE;
   huart1.Instance->CR2 |= USART_CR2_RTOEN;
 
@@ -539,7 +539,7 @@ static void MX_USART2_UART_Init(void)
   /*
    * Enable hardware "End of block" detection
    */
-  huart2.Instance->RTOR = ModbusTimeout;
+  huart2.Instance->RTOR = MODBUS_TIMEOUT;
   huart2.Instance->CR1 |= USART_CR1_RTOIE;
   huart2.Instance->CR2 |= USART_CR2_RTOEN;
 
@@ -633,7 +633,8 @@ void EndofBlock(void)
 	{
 		//HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
 		uint8_t Length = BUFFSIZE - hdma_usart1_rx.Instance->CNDTR;
-		__HAL_UART_CLEAR_FLAG(&huart1, UART_CLEAR_RTOF);
+		//__HAL_UART_CLEAR_FLAG(&huart1, UART_CLEAR_RTOF);
+		SET_BIT(huart1.Instance->ICR, USART_ICR_RTOCF);
 		//HAL_UART_Abort(&huart1);
 
 		// Check if we received something, but not some glitch on the line

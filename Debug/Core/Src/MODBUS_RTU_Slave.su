@@ -1,2 +1,2 @@
 MODBUS_RTU_Slave.c:23:6:ModbusRTURoutine	72	dynamic
-MODBUS_RTU_Slave.c:292:6:ModbusExceptionHandler	16	static
+MODBUS_RTU_Slave.c:339:6:ModbusExceptionHandler	16	static

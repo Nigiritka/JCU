@@ -42,8 +42,13 @@ extern ADC_HandleTypeDef hadc1;
 #define REACHED_TARGET_POSITION				REACHED_TARGET_POSITION_Msk
 
 #define STOP_MOTOR_Pos						(5U)									// Stop motor in current position, PWM still will be apply 50%
-#define STOP_MOTOR_Msk						(0x1UL << STOP_MOTOR_Pos)				/*!< 0x00010000 */
+#define STOP_MOTOR_Msk						(0x1UL << STOP_MOTOR_Pos)				/*!< 0x00100000 */
 #define STOP_MOTOR							STOP_MOTOR_Msk
+
+
+#define SOFTWARE_RESET_Pos					(15U)									// Software reset. initiate software reset when is set to 1
+#define SOFTWARE_RESET_Msk					(0x1UL << SOFTWARE_RESET_Pos)				/*!< 0x100000000 00000000 */
+#define SOFTWARE_RESET						SOFTWARE_RESET_Msk
 
 
 /*

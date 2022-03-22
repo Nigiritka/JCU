@@ -64,8 +64,44 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 
 			switch (ModbusFunction)
 			{
+				case READ_COILS:
+					// this part is reading JCUState.StatusRegister bit by bit. Detailed description of each bit(coils) in Motor_Driver.h
+
+					// Defining the first address of coil Master wants to read (third and forth bytes of the message):
+					RequestedAddress = (temp[2] << 8) + temp[3];
+					// Offset the pointer from the first input register to desired data.
+
+					//???????????????????????
+
+					// Defining how many coil master wants to read
+					AmountofRead = (temp[4] << 8) + temp[5];
+					ByteCount = AmountofRead*2;
+
+					/*
+					 * Check if there is no such errors:
+					 * 1. First address of the coil is correct
+					 * 2. Amount of the information which master wants to read does not exceed amount of data available in the slave
+					 */
+					if (((RequestedAddress >= ENABLE_MOTOR_Pos) && (RequestedAddress <= SOFTWARE_RESET_Pos))
+							&& (((RequestedAddress - ENABLE_MOTOR_Pos) + AmountofRead) <= TOTAL_COILS))
+					{
+
+
+
+
+					}
+					else
+					{
+						// Modbus Exception 0x02, The data address received in the query is not an allowable address for the slave.
+						ModbusExceptionHandler(MODBUS_ILLEGAL_DATA_ADDRESS);
+					}
+
+
+
+					break;
+
 				case READ_AOHR:
-				// Read JCU parameters which Master has set (Acceleration/Deceleration/Max Speed/Max Torque/Target Angle/Status Register)
+					// Read JCU parameters which Master has set (Acceleration/Deceleration/Max Speed/Max Torque/Target Angle/Status Register)
 
 					// Defining the first address of Holding registers Master wants to read (third and forth bytes of the message):
 					RequestedAddress = (temp[2] << 8) + temp[3];
@@ -118,7 +154,7 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 					break;
 
 				case READ_AIR:
-				// Read JCU parameters (errors/Angle/speed/torque/temperature)
+					// Read JCU parameters (errors/Angle/speed/torque/temperature)
 
 					// Defining the first address of input registers Master wants to read (third and forth bytes of the message):
 					RequestedAddress = (temp[2] << 8) + temp[3];
@@ -171,8 +207,12 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 
 					break;
 
+				case WRITE_SINGLE_COIL:
+
+					break;
+
 				case WRITE_SINGLE_AOHR:
-				// Write Single parameter to JCU (Acceleration/Deceleration/Max Speed/Max Torque/Target Angle/Status Register)
+					// Write Single parameter to JCU (Acceleration/Deceleration/Max Speed/Max Torque/Target Angle/Status Register)
 
 					RequestedAddress = (temp[2] << 8) + temp[3];
 					// Offset the pointer from the first Holding register to desired data.
@@ -209,7 +249,7 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 					break;
 
 				case WRITE_MULTIPLE_AOHR:
-				// Write multiple parameter to JCU (Acceleration/Deceleration/Max Speed/Max Torque/Target Angle/Status Register)
+					// Write multiple parameter to JCU (Acceleration/Deceleration/Max Speed/Max Torque/Target Angle/Status Register)
 
 					// Defining the first address of Holding registers Master wants to write (third and forth bytes of the message):
 					RequestedAddress = (temp[2] << 8) + temp[3];
