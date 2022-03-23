@@ -16,10 +16,10 @@ uint16_t *pJCUState = (uint16_t*) &JCUState;
 float tau; 												// Derivative time constant
 volatile uint16_t adcResultDMA[3];
 uint16_t PWMValue = 500;
-uint16_t PreviousAngle = 0;
+uint32_t PreviousEncoderCount = 0;
 int16_t AverageSpeed = 0;
-uint32_t AveragePosititon = 0;
 uint16_t counter = 0;
+uint32_t EncoderCounter = 0;
 float PosError;
 float prevPosError;
 
@@ -148,7 +148,7 @@ void RunMotor(void)
 	}
 
 
-	//JCUState.Speed = SpeedCalculation();
+	JCUState.Speed = SpeedCalculation();
 
 	if (MotorState == MOTOR_RUN)
 	{
@@ -157,6 +157,11 @@ void RunMotor(void)
 
 }
 
+// Count increment encoder ticks
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+	EncoderCounter = __HAL_TIM_GET_COUNTER(htim);
+}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -176,25 +181,18 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
  */
 int16_t SpeedCalculation(void)
 {
-	if (counter < 2)
+	if (counter < 99)
 	{
 		counter++;
-		AveragePosititon = (JCUState.Angle/4) + AveragePosititon;
 	}
 	else
 	{
-
-
+		AverageSpeed = EncoderCounter - PreviousEncoderCount;
+		PreviousEncoderCount = EncoderCounter;
 		counter = 0;
-		AveragePosititon = AveragePosititon + JCUState.Angle;
-		AveragePosititon = AveragePosititon/10;
-		AverageSpeed = (AveragePosititon - PreviousAngle);
-		PreviousAngle = AveragePosititon;
-		AveragePosititon = 0;
+		return AverageSpeed;
 	}
 
-
-	return AverageSpeed;
 }
 
 void EnableMotor(void)

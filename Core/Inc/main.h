@@ -63,8 +63,10 @@ void EndofBlock(void);
 #define LED_BLUE_GPIO_Port GPIOC
 #define LED_RED_Pin GPIO_PIN_15
 #define LED_RED_GPIO_Port GPIOC
-#define MCO_Pin GPIO_PIN_0
-#define MCO_GPIO_Port GPIOA
+#define ENCODER_A_Pin GPIO_PIN_0
+#define ENCODER_A_GPIO_Port GPIOA
+#define ENCODER_B_Pin GPIO_PIN_1
+#define ENCODER_B_GPIO_Port GPIOA
 #define VCP_TX_Pin GPIO_PIN_2
 #define VCP_TX_GPIO_Port GPIOA
 #define Current_Pin GPIO_PIN_3
@@ -94,5 +96,3 @@ void EndofBlock(void);
 #endif
 
 #endif /* __MAIN_H */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

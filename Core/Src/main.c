@@ -28,6 +28,8 @@
  * 7. Modbus coils, so that user can enable and disable single bit in status register. Check it carefully
  * 9. Double check bits maps. have been changed in Modbus register description
  * 10. Implement current loop
+ * 11. Use encoder timer with DMA
+ * 12. Use another timer in capture mode to calculate speed, acceleration, deceleration
  */
 
 
@@ -53,7 +55,6 @@
 #define BUFFSIZE					100
 
 
-
 //for 3 Mbit - 20 - value for waiting 3.5 bytes of silence after end of receiving Modbus package
 
 #define MODBUS_TIMEOUT				20
@@ -74,6 +75,7 @@ CRC_HandleTypeDef hcrc;
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -86,8 +88,6 @@ DMA_HandleTypeDef hdma_usart2_tx;
 uint8_t RxData[BUFFSIZE] = {0};
 uint8_t TxData[BUFFSIZE] = {0};
 uint8_t Bytecounter = 0;
-char HelloWorld[] = "Hello World";
-
 
 
 extern volatile uint16_t adcResultDMA[3];
@@ -103,6 +103,7 @@ static void MX_TIM1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_CRC_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 extern void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length);
 /* USER CODE END PFP */
@@ -147,6 +148,7 @@ int main(void)
   MX_SPI1_Init();
   MX_CRC_Init();
   MX_USART1_UART_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   // disable interrupt of DMA - half of reveive
@@ -155,6 +157,8 @@ int main(void)
   hdma_usart1_rx.Instance->CNDTR = BUFFSIZE;
   HAL_UART_Receive_DMA(&huart1, RxData, BUFFSIZE);
 
+  HAL_TIM_Encoder_Start_IT(&htim2, TIM_CHANNEL_ALL);
+  // HAL_TIM_Encoder_Start_DMA
 
   /*
    * Test part
@@ -461,6 +465,55 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_Encoder_InitTypeDef sConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 4294967295;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
+  sConfig.IC1Polarity = TIM_ICPOLARITY_FALLING;
+  sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC1Filter = 0;
+  sConfig.IC2Polarity = TIM_ICPOLARITY_FALLING;
+  sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC2Filter = 0;
+  if (HAL_TIM_Encoder_Init(&htim2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -706,4 +759,3 @@ void assert_failed(uint8_t *file, uint32_t line)
 }
 #endif /* USE_FULL_ASSERT */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
