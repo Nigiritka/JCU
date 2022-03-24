@@ -30,6 +30,8 @@
  * 10. Implement current loop
  * 11. Use encoder timer with DMA
  * 12. Use another timer in capture mode to calculate speed, acceleration, deceleration
+ * 13. Check if error and exception which minimal modbus in Python gives me
+ * 14. in modbus coils clear bits with bitwise operators
  */
 
 
@@ -165,7 +167,7 @@ int main(void)
    */
   JCUConfig.KpPossitionLoop = 0.3;
   JCUConfig.TargetAngel = 11000;
-  JCUConfig.StatusRegister = 0x09;
+  JCUConfig.StatusRegister = 0x12;
   CheckStatusRegister();
 
 

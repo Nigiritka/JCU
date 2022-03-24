@@ -69,9 +69,6 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 
 					// Defining the first address of coil Master wants to read (third and forth bytes of the message):
 					RequestedAddress = (temp[2] << 8) + temp[3];
-					// Offset the pointer from the first input register to desired data.
-
-					//???????????????????????
 
 					// Defining how many coil master wants to read
 					AmountofRead = (temp[4] << 8) + temp[5];
@@ -85,9 +82,35 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 					if (((RequestedAddress >= ENABLE_MOTOR_Pos) && (RequestedAddress <= SOFTWARE_RESET_Pos))
 							&& (((RequestedAddress - ENABLE_MOTOR_Pos) + AmountofRead) <= TOTAL_COILS))
 					{
+						TxData[0] = SLAVE_ID;
+						TxData[1] = ModbusFunction;
+						//TxData[2] = ByteCount;
+						uint16_t tempvalue = JCUConfig.StatusRegister;
+						if (RequestedAddress < 8)
+						{
 
+							tempvalue <<= 8 + (8 - RequestedAddress); 	// move one byte, and other bits from byte which we do not need
+							tempvalue >>= 8 + (8 - RequestedAddress);	// fill emptiness with zeros on the left
+							TxData[4] = tempvalue;
+							tempvalue >>= 8;
+							TxData[3] = tempvalue;
+						}
+						else
+						{
+							TxData[4] = tempvalue;
+							tempvalue >>= 8;
+							TxData[3] = tempvalue;
+						}
+						CRCforResponse = HAL_CRC_Calculate(&hcrc, (uint32_t *)&TxData, (ByteCount+3));
+						TxData[ByteCount+3] = CRCforResponse;
+						CRCforResponse >>= 8;
+						TxData[ByteCount+4] = CRCforResponse;
+						while(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_BUSY))
+						{
 
-
+						}
+						HAL_GPIO_WritePin(RS485_FC_GPIO_Port, RS485_FC_Pin, GPIO_PIN_SET);
+						HAL_UART_Transmit_DMA(&huart1, TxData, (5+ByteCount));
 
 					}
 					else

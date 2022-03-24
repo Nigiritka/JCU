@@ -5,5 +5,5 @@ Motor_Driver.c:161:6:HAL_TIM_IC_CaptureCallback	16	static
 Motor_Driver.c:166:6:HAL_TIM_PeriodElapsedCallback	16	static
 Motor_Driver.c:171:6:HAL_ADC_ConvCpltCallback	16	static
 Motor_Driver.c:182:9:SpeedCalculation	4	static
-Motor_Driver.c:198:6:EnableMotor	8	static
-Motor_Driver.c:211:6:DisableMotor	8	static
+Motor_Driver.c:197:6:EnableMotor	8	static
+Motor_Driver.c:210:6:DisableMotor	8	static

@@ -192,7 +192,6 @@ int16_t SpeedCalculation(void)
 		counter = 0;
 		return AverageSpeed;
 	}
-
 }
 
 void EnableMotor(void)
