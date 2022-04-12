@@ -9,10 +9,12 @@
 #define INC_AS5048A_H_
 
 #include "main.h"
+#include "JCU_defines.h"
 #include <stdbool.h>
 #include <stdint.h>
 
 extern SPI_HandleTypeDef hspi1;
+extern void DisableMotor(void);
 
 #define SIZE 								2										// number of bytes of the message of SPI communication with AD5048A
 #define STATE_ENCODER_READ_ANGLE			1

@@ -8,6 +8,8 @@
 
 #include "MODBUS_RTU_Slave.h"
 
+extern JCU_Config_t JCUConfig;
+extern JCU_State_t JCUState;
 
 /* 40 us recieving data
  * 18 us waiting silence
@@ -65,7 +67,7 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 			switch (ModbusFunction)
 			{
 				case READ_COILS:
-					// this part is reading JCUState.StatusRegister bit by bit. Detailed description of each bit(coils) in Motor_Driver.h
+					// this part is reading JCUState.ControlRegister bit by bit. Detailed description of each bit(coils) in Motor_Driver.h
 
 					// Defining the first address of coil Master wants to read (third and forth bytes of the message):
 					RequestedAddress = (temp[2] << 8) + temp[3];
@@ -85,7 +87,7 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 						TxData[0] = SLAVE_ID;
 						TxData[1] = ModbusFunction;
 						//TxData[2] = ByteCount;
-						uint16_t tempvalue = JCUConfig.StatusRegister;
+						uint16_t tempvalue = JCUConfig.ControlRegister;
 						if (RequestedAddress < 8)
 						{
 
@@ -259,7 +261,7 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 						HAL_UART_Transmit_DMA(&huart1, RxData, Length);
 						if (RequestedAddress == ADDRESS_STATUS_REGISTER)
 						{
-							CheckStatusRegister();
+							CheckControlRegister();
 						}
 
 					}
@@ -316,7 +318,7 @@ void ModbusRTURoutine(uint8_t *pBUFFER, uint8_t Length)
 							// wait until the line is available
 						}
 						HAL_UART_Transmit_DMA(&huart1, TxData, WRITE_MULTIPLE_AOHR_BYTES_RESPONSE);
-						CheckStatusRegister();												// could be improved if we can check, was this register updated by master or not
+						CheckControlRegister();												// could be improved if we can check, was this register updated by master or not
 					}
 
 					// if there are errors in request:

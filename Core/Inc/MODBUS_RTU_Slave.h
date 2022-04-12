@@ -10,11 +10,13 @@
 
 
 #include "main.h"
-#include "Motor_Driver.h"
+#include "JCU_defines.h"
+
 
 /*
  * external
  */
+
 extern uint16_t *pJCUConfig;
 extern uint16_t *pJCUState;
 extern uint8_t RxData[];

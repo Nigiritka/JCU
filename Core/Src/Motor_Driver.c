@@ -8,6 +8,9 @@
 
 #include "Motor_Driver.h"
 
+JCU_Config_t JCUConfig;
+JCU_State_t JCUState;
+
 // creating pointers to the motor structures
 uint16_t *pJCUConfig = (uint16_t*) &JCUConfig;
 uint16_t *pJCUState = (uint16_t*) &JCUState;
@@ -17,7 +20,6 @@ float tau; 												// Derivative time constant
 volatile uint16_t adcResultDMA[3];
 uint16_t PWMValue = 500;
 uint32_t PreviousEncoderCount = 0;
-int16_t AverageSpeed = 0;
 uint16_t counter = 0;
 uint32_t EncoderCounter = 0;
 float PosError;
@@ -27,18 +29,20 @@ void UpdatePWM(void)
 {
 	HAL_GPIO_TogglePin(LED_BLUE_GPIO_Port, LED_BLUE_Pin);
 
+
+	/*
+	 * position loop
+	 */
+
+	/*
 	// 1. Measuring error position
 	PosError = JCUConfig.TargetAngel - JCUState.Angle;
 
 	// 2. Proportional
 	float Proportional = JCUConfig.KpPossitionLoop * PosError;
-
 	float Integral = 0;
-
 	float Derivative = 0;
-
 	float PID = Proportional + Integral + Derivative;
-
 	if (PID >= 0)
 	{
 		PID = 500 + PID;
@@ -57,68 +61,9 @@ void UpdatePWM(void)
 	}
 	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 1000 - PWMValue);
 	__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, PWMValue);
-
+	*/
 }
 
-void CheckStatusRegister(void)
-{
-	// Check bits in status register ONLY which could be written by Master.
-	if 	(CHECK_BIT(JCUConfig.StatusRegister, ENABLE_MOTOR_Pos))
-	{
-		if (MotorState == MOTOR_DISABLED)			// enable motor if it is not enabled
-		{
-			MotorState = MOTOR_ENABLED;
-			EnableMotor();
-		}
-	}
-	else
-	{
-		if (MotorState != MOTOR_DISABLED)
-		{
-			MotorState = MOTOR_DISABLED;
-			DisableMotor();
-		}
-	}
-
-
-	if (CHECK_BIT(JCUConfig.StatusRegister, SET_BRAKE_Pos))
-	{
-		// apply brake only if motor is not running
-		if(MotorState != MOTOR_RUN)
-		{
-			// TO DO: Apply brake, obviously
-		}
-	}
-	else
-	{
-		// should  i reset brake??
-	}
-
-
-	if (CHECK_BIT(JCUConfig.StatusRegister, GO_TO_TARGET_POSITION_Pos))
-	{
-		if (MotorState == MOTOR_ENABLED)
-		{
-			MotorState = MOTOR_RUN;
-		}
-
-	}
-	else
-	{
-		// decide what to do here
-	}
-
-	if (CHECK_BIT(JCUConfig.StatusRegister, STOP_MOTOR_Pos))
-	{
-		JCUConfig.StatusRegister &=~ GO_TO_TARGET_POSITION;				// not go to target position anymore
-		// 1. Terminate PID
-		MotorState = MOTOR_ENABLED;
-		// 2. set PWM 50%
-		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 500);
-		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 500);
-	}
-
-}
 
 void RunMotor(void)
 {
@@ -145,10 +90,9 @@ void RunMotor(void)
 	{
 		//dummy step
 		FeedbackState = READ_ENCODER;
+		JCUState.Speed = EncoderCounter - PreviousEncoderCount;
+		PreviousEncoderCount = EncoderCounter;
 	}
-
-
-	JCUState.Speed = SpeedCalculation();
 
 	if (MotorState == MOTOR_RUN)
 	{
@@ -170,28 +114,68 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-	JCUState.MotorTemp = adcResultDMA[0] >> 8;			// potentiometer
-	JCUState.HbridgeTemp = adcResultDMA[1] >> 8;		// Driver temp
-	JCUState.Torque = adcResultDMA[2];					// current feedback
+
 }
 
-/*
- * REDO~!!!!!!!!!!!!!!!!!!!!111
- * Use quadrature encoder for this
- */
-int16_t SpeedCalculation(void)
+
+void CheckControlRegister(void)
 {
-	if (counter < 99)
+	// Check bits in status register ONLY which could be written by Master.
+	if 	(CHECK_BIT(JCUConfig.ControlRegister, ENABLE_MOTOR_Pos))
 	{
-		counter++;
+		if (MotorState == MOTOR_DISABLED)			// enable motor if it is not enabled
+		{
+			MotorState = MOTOR_ENABLED;
+			EnableMotor();
+		}
 	}
 	else
 	{
-		AverageSpeed = EncoderCounter - PreviousEncoderCount;
-		PreviousEncoderCount = EncoderCounter;
-		counter = 0;
-		return AverageSpeed;
+		if (MotorState != MOTOR_DISABLED)
+		{
+			MotorState = MOTOR_DISABLED;
+			DisableMotor();
+		}
 	}
+
+
+	if (CHECK_BIT(JCUConfig.ControlRegister, SET_BRAKE_Pos))
+	{
+		// apply brake only if motor is not running
+		if(MotorState != MOTOR_RUN)
+		{
+			// TO DO: Apply brake, obviously
+		}
+	}
+	else
+	{
+		// should  i reset brake??
+	}
+
+
+	if (CHECK_BIT(JCUConfig.ControlRegister, GO_TO_TARGET_POSITION_Pos))
+	{
+		if (MotorState == MOTOR_ENABLED)
+		{
+			MotorState = MOTOR_RUN;
+		}
+
+	}
+	else
+	{
+		// decide what to do here
+	}
+
+	if (CHECK_BIT(JCUConfig.ControlRegister, STOP_MOTOR_Pos))
+	{
+		JCUConfig.ControlRegister &=~ GO_TO_TARGET_POSITION;				// not go to target position anymore
+		// 1. Terminate PID
+		MotorState = MOTOR_ENABLED;
+		// 2. set PWM 50%
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 500);
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 500);
+	}
+
 }
 
 void EnableMotor(void)
@@ -226,7 +210,7 @@ void TestAsignment(void)
 	JCUConfig.MaxSpeed = 200;
 	JCUConfig.MaxTorque = 6;
 	JCUConfig.TargetAngel = 16000;
-	JCUConfig.StatusRegister = 50000;
+	JCUConfig.ControlRegister = 50000;
 	JCUConfig.KpCurrentLoop = 152.25;
 	JCUConfig.KiCurrentLoop = -18.5;
 	JCUConfig.KdCurrentLoop = 32;

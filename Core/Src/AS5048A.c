@@ -6,7 +6,10 @@
  */
 
 #include "AS5048A.h"
-#include "Motor_Driver.h"
+
+extern JCU_Config_t JCUConfig;
+extern JCU_State_t JCUState;
+
 
 uint8_t ReadAngle[SIZE] = {0xFF, 0xFF};							// Command to read angle
 uint8_t Angle[SIZE] = {0};										// Variable for angle value
